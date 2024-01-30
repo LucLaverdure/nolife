@@ -1,0 +1,16 @@
+how old:ages.txt
+how come:reasons.txt
+how many:quantities.txt
+how much:quantities.txt
+how long:durations.txt
+how often:frequencies.txt
+how far:distances.txt
+what:things.txt
+where:locations.txt
+how:ways.txt
+why:reasons.txt
+when:times.txt
+who:people.txt
+whom:people.txt
+whose:people.txt
+which:things.txt
