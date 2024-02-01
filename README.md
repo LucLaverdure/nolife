@@ -1,3 +1,3 @@
 # nolife
 
-httpps://nolife.app
+https://nolife.app
