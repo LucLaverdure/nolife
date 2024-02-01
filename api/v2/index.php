@@ -3,6 +3,7 @@
 //ini_set('error_log', '/path/to/your/php-error.log');
 //error_reporting(E_ALL);
 //ini_set('display_errors', 1);
+header('Content-type:text/html; charset=utf-8');
 session_start();
 class nolife_ai {
 
@@ -30,7 +31,7 @@ class nolife_ai {
     function fetch_did_you_know($word) : string {
         $fetch = "https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts&titles=" . urlencode($word);
         $buffer = $this->curlit($fetch);
-        $buffer = mb_convert_encoding($buffer, 'UTF-8', mb_detect_encoding($buffer, 'UTF-8, ISO-8859-1', true));
+        $buffer = mb_convert_encoding($buffer, 'UTF-8', mb_detect_encoding($buffer, null, true));
         $json = json_decode($buffer, true);
 
         try {
@@ -51,15 +52,25 @@ class nolife_ai {
             libxml_clear_errors(); // Clear errors after parsing
 
             // Create a new DOMXPath instance and query for the first <p> tag
+
+            // Create a new DOMXPath instance and query for the first <p> tag
             $xpath = new DOMXPath($dom);
             $paragraphs = $xpath->query('//p[not(contains(., "refer to") or contains(., "refers to"))]');
 
-            // Check if we have at least one <p> tag
-            if ($paragraphs->length > 0) {
-                $randomIndex = rand(0, $paragraphs->length - 1);
+            $filteredParagraphs = [];
+            foreach ($paragraphs as $paragraph) {
+                $textContent = trim(strip_tags($paragraph->nodeValue));
+                if (!empty($textContent)) {
+                    $filteredParagraphs[] = $paragraph;
+                }
+            }
+
+            // Check if we have at least one non-empty <p> tag
+            if (!empty($filteredParagraphs)) {
+                $randomIndex = rand(0, count($filteredParagraphs) - 1);
 
                 // Fetch the random <p> tag
-                $randomP = $paragraphs->item($randomIndex);
+                $randomP = $filteredParagraphs[$randomIndex];
 
                 // Extract the content inside the <p> tag
                 $randomPContent = $dom->saveHTML($randomP);
@@ -67,6 +78,7 @@ class nolife_ai {
             } else {
                 return "";
             }
+
         } catch (\Exception $e) {
             return "";
         }
@@ -89,7 +101,7 @@ class nolife_ai {
             $smileyWithSpaces = " {$smiley} ";
             $replacementWithSpaces = " {$replacement} ";
             if (strpos($msg, $smileyWithSpaces) !== false) {
-                $msg = str_replace($smileyWithSpaces, $replacementWithSpaces, $msg);
+                $msg = str_replace(" ".$smileyWithSpaces, " ".$replacementWithSpaces, $msg);
             }
         }
 
@@ -101,15 +113,20 @@ class nolife_ai {
     function replace_curse_words($msg) : string {
         $curse_words = file($_ENV["nolife_path"]."data/banned-words.txt");
         $things = file($_ENV["nolife_path"]."data/question-responses/things.txt");
-        $random_thing = $things[mt_rand(0, count($things) - 1)];
-        $msg = str_replace($curse_words, $random_thing, $msg);
+        usort($curse_words, function($a, $b) {
+            return strlen($b) - strlen($a);
+        });
+        $msg = " ".$msg." ";
+        foreach ($curse_words as $garbage_word) {
+            $random_thing = $things[mt_rand(0, count($things) - 1)];
+            $msg = str_replace(" ".trim(strtolower($garbage_word)), " ".$random_thing, strtolower($msg));
+        }
         return $msg;
     }
 
     // detect and answer questions
     function detect_and_answer_questions($input) : string {
         $response = "";
-        $things = file($_ENV["nolife_path"]."data/question-responses/things.txt");
         $questions = file($_ENV["nolife_path"]."data/words-questions.txt");
         foreach ($questions as $question) {
             $question_word = explode(":", $question)[0];
@@ -131,7 +148,7 @@ class nolife_ai {
         $input = preg_replace("/[^a-zA-Z0-9 ]/", '', $input);
         $garbage = file($_ENV["nolife_path"]."data/words-meaningless.txt");
         foreach ($garbage as $garbage_word) {
-            $input = str_replace($garbage_word, "", $input);
+            $input = str_replace(" ".strtolower(trim($garbage_word)), " ", $input);
         }
         return $this->remove_spacings($input);
     }
@@ -144,6 +161,15 @@ class nolife_ai {
     function snob_response($input): string {
         $things = file($_ENV["nolife_path"]."data/question-responses/did-you-know.txt");
         return $things[mt_rand(0, count($things) - 1)]. " " . $input;
+    }
+
+    function gods_response($input): string {
+        $input = " ".strtolower($input)." ";
+        $gods = file($_ENV["nolife_path"]."data/gods.txt");
+        foreach ($gods as $god) {
+            $input = str_replace(strtolower(" ".trim($god)), " Mushroom Queen", $input);
+        }
+        return $input;
     }
 
     function detect_and_assign_colors($input) : string {
@@ -189,6 +215,9 @@ class nolife_ai {
         if (empty($response)) {
             $response = $this->respond_randomly();
         }
+
+        // add some deities fun
+        $response = $this->gods_response($response);
 
         // filter out curse words
         $response = $this->replace_curse_words($response);

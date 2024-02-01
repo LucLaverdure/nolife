@@ -213,10 +213,10 @@
                         trackCustomEvent('chat', error);
                         console.log(error);
                     }, complete: function() {
-                        $('input').val('');
-                        $("input").trigger({type: 'input'});
-                        $("input").attr("placeholder", "Type a message...");
-                        $('input').focus();
+                        $('input').val('')
+                        .trigger({type: 'input'})
+                        .attr("placeholder", "Type a message...")
+                        .focus();
                     }
                 });
             }
