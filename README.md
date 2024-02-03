@@ -1,1 +1,3 @@
 # nolife
+
+https://nolife.app
