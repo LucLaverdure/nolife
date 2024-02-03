@@ -197,7 +197,7 @@
                     url: "/api/v2/",
                     type: 'POST',
                     contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
-                    data: { msg: input },
+                    data: { msg: input.normalize("NFD").replace(/[\u0300-\u036f]/g, "") },
                     dataType: 'json',
                     context: this,
                     cache: false,
