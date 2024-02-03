@@ -31,7 +31,10 @@ class nolife_ai {
     function fetch_did_you_know($word) : string {
         $fetch = "https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts&titles=" . urlencode($word);
         $buffer = $this->curlit($fetch);
-        $buffer = mb_convert_encoding($buffer, 'UTF-8', mb_detect_encoding($buffer, null, true));
+        $buffer = iconv('UTF-8', 'ASCII//TRANSLIT', $buffer);
+        ini_set('mbstring.substitute_character', "none");
+        $buffer = mb_convert_encoding($buffer, 'UTF-8', 'UTF-8');
+
         $json = json_decode($buffer, true);
 
         try {
@@ -185,7 +188,7 @@ class nolife_ai {
 
     // main render function
     function render() : string {
-        $input = " ".strip_tags($this->remove_spacings($_POST["msg"]))." ";
+        $input = " ".urldecode(strip_tags($this->remove_spacings($_POST["msg"])))." ";
 
         // filter out curse words
         $input = $this->replace_curse_words($input);
