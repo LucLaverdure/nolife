@@ -28,7 +28,22 @@ class nolife_ai {
         }
     }
 
-    function fetch_did_you_know($word) : string {
+    function fetch_did_you_know($input) : string {
+        $input = explode(" ", preg_replace("/[^a-zA-Z0-9 ]/", '', $input));
+        // check if we know anything about what the user is talking about
+        $good_words = [];
+        $garbage_words = file($_ENV["nolife_path"]."data/words-meaningless.txt", FILE_IGNORE_NEW_LINES);
+        foreach ($input as $word) {
+            if (strlen($word) >= 3 && !in_array(trim($word), $garbage_words)) {
+                $good_words[] = $word;
+            }
+        }
+        if (empty($good_words)) {
+            return "";
+        }
+
+        $word = $good_words[mt_rand(0, count($good_words) - 1)];
+
         $fetch = "https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts&titles=" . urlencode($word);
         $buffer = $this->curlit($fetch);
         $buffer = iconv('UTF-8', 'ASCII//TRANSLIT', $buffer);
@@ -129,7 +144,7 @@ class nolife_ai {
 
     // detect and answer questions
     function detect_and_answer_questions($input) : string {
-        $response = "";
+        $ret = "";
         $questions = file($_ENV["nolife_path"]."data/words-questions.txt");
         foreach ($questions as $question) {
             $question_word = explode(":", $question)[0];
@@ -138,7 +153,7 @@ class nolife_ai {
                 return $available_responses[mt_rand(0, count($available_responses) - 1)];
             }
         }
-        return $response;
+        return $ret;
     }
 
     function remove_spacings($input): string {
@@ -146,14 +161,10 @@ class nolife_ai {
         return trim($input);
     }
 
-    function remove_garbage_input($input) : string {
+    function garbage_input($input) : string {
         $input = strtolower($input);
-        $input = preg_replace("/[^a-zA-Z0-9 ]/", '', $input);
         $garbage = file($_ENV["nolife_path"]."data/words-meaningless.txt");
-        foreach ($garbage as $garbage_word) {
-            $input = str_replace(" ".strtolower(trim($garbage_word)), " ", $input);
-        }
-        return $this->remove_spacings($input);
+        return $garbage;
     }
 
     function respond_randomly() : string {
@@ -190,37 +201,21 @@ class nolife_ai {
     function render() : string {
         $input = " ".urldecode(strip_tags($this->remove_spacings($_POST["msg"])))." ";
 
-        // filter out curse words
-        $input = $this->replace_curse_words($input);
+        // detect questions, BEFORE removing garbage input
+        $question_answer = $this->detect_and_answer_questions($input);
 
-        // filtered input
-        $filtered_input = $this->remove_garbage_input($input);
+        // info from wikipedia
+        $did_you_know = $this->fetch_did_you_know($input);
 
-        // detect and assign colors
-        $chat_color = $this->detect_and_assign_colors($filtered_input);
-
-        // check if we know anything about what the user is talking about
-        $random_word = explode(" ", $filtered_input)[mt_rand(0, count(explode(" ", $filtered_input)) - 1)];
-        $did_you_know = $this->fetch_did_you_know($random_word);
-
-        // detect and answer questions
-        $response = $this->detect_and_answer_questions($filtered_input);
-
-        if (empty($did_you_know)) {
-            if (empty($response)) {
-                $response = $this->respond_randomly();
-            }
-        } else {
-            $response = $response . " " . $this->snob_response($did_you_know);
-        }
-
-        // no question detected, respond with something that doesn't mean anything.
-        if (empty($response)) {
-            $response = $this->respond_randomly();
-        }
+        $response = trim($question_answer);
+        if (!empty(trim($did_you_know))) $response .= " " . $this->snob_response($did_you_know);
+        if ($response == "") $response = $this->respond_randomly();
 
         // add some deities fun
         $response = $this->gods_response($response);
+
+        // filter out curse words
+        $input = $this->replace_curse_words($input);
 
         // filter out curse words
         $response = $this->replace_curse_words($response);
@@ -228,6 +223,7 @@ class nolife_ai {
         // add smileys
         $response = $this->addSmileys($response);
         $input = $this->addSmileys($input);
+        $chat_color = $this->detect_and_assign_colors($input);
 
         $response = str_replace("%random%", mt_rand(1,999), $response);
 
