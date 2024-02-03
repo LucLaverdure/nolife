@@ -197,6 +197,16 @@ class nolife_ai {
         return "#e0f7fa";
     }
 
+    function capitalize_properly($input) : string {
+        // This pattern looks for sentences, considering punctuation followed by spaces or end of line.
+        $pattern = '/(?<=\.|\?|!|\n|^)(\s*)([a-z])/iu';
+
+        // Use preg_replace_callback to capitalize the first letter of each sentence.
+        return preg_replace_callback($pattern, function ($matches) {
+            return $matches[1] . mb_strtoupper($matches[2], 'UTF-8');
+        }, $input);
+    }
+
     // main render function
     function render() : string {
         $input = " ".urldecode(strip_tags($this->remove_spacings($_POST["msg"])))." ";
@@ -226,6 +236,9 @@ class nolife_ai {
         $chat_color = $this->detect_and_assign_colors($input);
 
         $response = str_replace("%random%", mt_rand(1,999), $response);
+
+        $response = $this->capitalize_properly($response);
+        $input = $this->capitalize_properly($input);
 
         return json_encode([
             "nolife" => $response,
